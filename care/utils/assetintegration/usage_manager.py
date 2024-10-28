@@ -7,40 +7,29 @@ from care.users.models import User
 
 class UsageManager:
     def __init__(self, asset_id: str, user: User):
+        self.redis_client = cache.client.get_client()
         self.asset = str(asset_id)
         self.user = user
-        self.waiting_list_cache_key = f"onvif_waiting_list_{asset_id}"
-        self.current_user_cache_key = f"onvif_current_user_{asset_id}"
+        self.waiting_list_cache_key = f"onvif_waiting_list:{asset_id}"
+        self.current_user_cache_key = f"onvif_current_user:{asset_id}"
 
     def get_waiting_list(self) -> list[User]:
-        asset_queue = cache.get(self.waiting_list_cache_key)
-
-        return list(User.objects.filter(username__in=asset_queue or []))
+        asset_queue = self.redis_client.lrange(self.waiting_list_cache_key, 0, -1)
+        return list(User.objects.filter(username__in=asset_queue))
 
     def add_to_waiting_list(self) -> int:
-        asset_queue = cache.get(self.waiting_list_cache_key)
+        if self.user.username not in self.redis_client.lrange(
+            self.waiting_list_cache_key, 0, -1
+        ):
+            self.redis_client.rpush(self.waiting_list_cache_key, self.user.username)
 
-        if asset_queue is None:
-            asset_queue = []
-
-        if self.user.username not in asset_queue:
-            asset_queue.append(self.user.username)
-            cache.set(self.waiting_list_cache_key, asset_queue)
-
-        return len(asset_queue)
+        return self.redis_client.llen(self.waiting_list_cache_key)
 
     def remove_from_waiting_list(self) -> None:
-        asset_queue = cache.get(self.waiting_list_cache_key)
-
-        if asset_queue is None:
-            asset_queue = []
-
-        if self.user.username in asset_queue:
-            asset_queue.remove(self.user.username)
-            cache.set(self.waiting_list_cache_key, asset_queue)
+        self.redis_client.lrem(self.waiting_list_cache_key, 0, self.user.username)
 
     def clear_waiting_list(self) -> None:
-        cache.delete(self.waiting_list_cache_key)
+        self.redis_client.delete(self.waiting_list_cache_key)
 
     def current_user(self) -> dict:
         from care.facility.api.serializers.asset import UserBaseMinimumSerializer
