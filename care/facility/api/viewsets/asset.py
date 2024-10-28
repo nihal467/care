@@ -404,7 +404,7 @@ class AssetViewSet(
         except PermissionDenied as e:
             return Response(
                 {**e.detail},
-                status=status.HTTP_409_CONFLICT,
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         except KeyError as e:
