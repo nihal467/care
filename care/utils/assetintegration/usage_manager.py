@@ -15,18 +15,18 @@ class UsageManager:
 
     def get_waiting_list(self) -> list[User]:
         asset_queue = self.redis_client.lrange(self.waiting_list_cache_key, 0, -1)
-        return list(User.objects.filter(username__in=asset_queue))
+        return list(User.objects.filter(id__in=asset_queue))
 
     def add_to_waiting_list(self) -> int:
-        if self.user.username not in self.redis_client.lrange(
+        if self.user.id not in self.redis_client.lrange(
             self.waiting_list_cache_key, 0, -1
         ):
-            self.redis_client.rpush(self.waiting_list_cache_key, self.user.username)
+            self.redis_client.rpush(self.waiting_list_cache_key, self.user.id)
 
         return self.redis_client.llen(self.waiting_list_cache_key)
 
     def remove_from_waiting_list(self) -> None:
-        self.redis_client.lrem(self.waiting_list_cache_key, 0, self.user.username)
+        self.redis_client.lrem(self.waiting_list_cache_key, 0, self.user.id)
 
     def clear_waiting_list(self) -> None:
         self.redis_client.delete(self.waiting_list_cache_key)
@@ -39,7 +39,7 @@ class UsageManager:
         if current_user is None:
             return None
 
-        user = User.objects.filter(username=current_user).first()
+        user = User.objects.filter(id=current_user).first()
 
         if user is None:
             cache.delete(self.current_user_cache_key)
@@ -49,7 +49,7 @@ class UsageManager:
 
     def has_access(self) -> bool:
         current_user = cache.get(self.current_user_cache_key)
-        return current_user is None or current_user == self.user.username
+        return current_user is None or current_user == self.user.id
 
     def notify_waiting_list_on_asset_availabe(self) -> None:
         from care.utils.notification_handler import send_webpush
@@ -74,7 +74,7 @@ class UsageManager:
         if current_user is None:
             return
 
-        requester = User.objects.filter(username=self.user.username).first()
+        requester = User.objects.filter(id=self.user.id).first()
 
         if requester is None:
             return
@@ -88,13 +88,14 @@ class UsageManager:
             }
         )
 
-        send_webpush(username=current_user, message=message)
+        user = User.objects.filter(id=current_user).first()
+        send_webpush(username=user.username, message=message)
 
     def lock_camera(self) -> bool:
         current_user = cache.get(self.current_user_cache_key)
 
-        if current_user is None or current_user == self.user.username:
-            cache.set(self.current_user_cache_key, self.user.username)
+        if current_user is None or current_user == self.user.id:
+            cache.set(self.current_user_cache_key, self.user.id)
             self.remove_from_waiting_list()
             return True
 
@@ -104,7 +105,7 @@ class UsageManager:
     def unlock_camera(self) -> None:
         current_user = cache.get(self.current_user_cache_key)
 
-        if current_user == self.user.username:
+        if current_user == self.user.id:
             cache.delete(self.current_user_cache_key)
             self.notify_waiting_list_on_asset_availabe()
 
