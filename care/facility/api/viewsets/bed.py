@@ -238,9 +238,9 @@ class ConsultationBedViewSet(
 
         is_privacy_enabled = request.data.get("is_privacy_enabled")
 
-        if is_privacy_enabled is None:
+        if is_privacy_enabled is None and not isinstance(is_privacy_enabled, bool):
             return Response(
-                {"detail": "'is_privacy_enabled' field is required."},
+                {"detail": "is_privacy_enabled is required and should be a boolean"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
