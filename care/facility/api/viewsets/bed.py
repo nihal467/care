@@ -280,7 +280,10 @@ class ConsultationBedViewSet(
 
         if not consultation_bed.consultation.patient.has_object_update_permission(
             request
-        ):
+        ) or request.user.user_type in [
+            User.TYPE_VALUE_MAP["DistrictLabAdmin"],
+            User.TYPE_VALUE_MAP["StateLabAdmin"],
+        ]:
             raise PermissionDenied
 
         consultation_bed.is_privacy_enabled = is_privacy_enabled

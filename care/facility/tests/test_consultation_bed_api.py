@@ -4,8 +4,9 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from care.facility.models import Asset, Bed, ConsultationBedAsset
+from care.facility.models import Asset, Bed, ConsultationBedAsset, FacilityUser
 from care.facility.models.bed import ConsultationBed
+from care.users.models import User
 from care.utils.tests.test_utils import TestUtils
 
 
@@ -427,3 +428,77 @@ class ConsultationBedApiTestCase(TestUtils, APITestCase):
             },
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_set_privacy_endpoint(self):
+        consultation_bed = ConsultationBed.objects.create(
+            consultation=self.consultation,
+            bed=self.bed1,
+            start_date=timezone.now(),
+            end_date=timezone.now() + timedelta(days=1),
+            is_privacy_enabled=False,
+        )
+
+        response = self.client.patch(
+            f"/api/v1/consultationbed/{consultation_bed.external_id}/set_privacy/",
+            {},
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        allowed_user_types = [
+            "StateAdmin",
+            "DistrictAdmin",
+            "Doctor",
+        ]
+        for user_type in allowed_user_types:
+            user = self.create_user(
+                username="test_user_" + user_type.lower(),
+                state=self.state,
+                district=self.district,
+                user_type=User.TYPE_VALUE_MAP[user_type],
+                home_facility=self.facility,
+            )
+
+            self.client.force_authenticate(user)
+
+            response = self.client.patch(
+                f"/api/v1/consultationbed/{consultation_bed.external_id}/set_privacy/",
+                {"is_privacy_enabled": True},
+            )
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertTrue(
+                ConsultationBed.objects.get(id=consultation_bed.id).is_privacy_enabled
+            )
+
+            response = self.client.patch(
+                f"/api/v1/consultationbed/{consultation_bed.external_id}/set_privacy/",
+                {"is_privacy_enabled": False},
+            )
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertFalse(
+                ConsultationBed.objects.get(id=consultation_bed.id).is_privacy_enabled
+            )
+
+        not_allowed_user_types = [
+            user_type
+            for user_type in User.TYPE_VALUE_MAP
+            if user_type not in allowed_user_types
+        ]
+        for user_type in not_allowed_user_types:
+            user = self.create_user(
+                username="test_user_" + user_type.lower(),
+                district=self.district,
+                user_type=User.TYPE_VALUE_MAP[user_type],
+            )
+            FacilityUser.objects.update_or_create(
+                user=user,
+                facility=self.facility,
+                defaults={"created_by": self.super_user},
+            )
+
+            self.client.force_authenticate(user)
+
+            response = self.client.patch(
+                f"/api/v1/consultationbed/{consultation_bed.external_id}/set_privacy/",
+                {"is_privacy_enabled": True},
+            )
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
