@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('facility', '0465_merge_20240923_1045'),
+        ('facility', '0466_camera_presets'),
     ]
 
     operations = [
