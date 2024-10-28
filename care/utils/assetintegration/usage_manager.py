@@ -95,7 +95,7 @@ class UsageManager:
         current_user = cache.get(self.current_user_cache_key)
 
         if current_user is None or current_user == self.user.id:
-            cache.set(self.current_user_cache_key, self.user.id)
+            cache.set(self.current_user_cache_key, self.user.id, timeout=60 * 5)
             self.remove_from_waiting_list()
             return True
 
