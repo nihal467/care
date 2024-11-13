@@ -1,8 +1,13 @@
 FROM python:3.13-slim-bookworm
 
 ARG TYPST_VERSION=0.11.0
+ARG APP_HOME=/app
 
-ENV PATH=/venv/bin:$PATH
+WORKDIR $APP_HOME
+
+ENV PATH=$APP_HOME/.venv/bin:$PATH
+ENV PIPENV_VENV_IN_PROJECT=1
+ENV PIPENV_CACHE_DIR=/root/.cache/pip
 
 RUN apt-get update && apt-get install --no-install-recommends -y \
   build-essential libjpeg-dev zlib1g-dev libgmp-dev \
@@ -27,21 +32,21 @@ RUN ARCH=$(dpkg --print-architecture) && \
     rm -rf typst.tar.xz typst-${TYPST_ARCH}
 
 # use pipenv to manage virtualenv
-RUN python -m venv /venv
-RUN pip install pipenv==2024.2.0
+RUN pip install pipenv
 
-COPY Pipfile Pipfile.lock ./
-RUN pipenv install --system --categories "packages dev-packages"
+RUN mkdir -p $APP_HOME/.venv
+COPY Pipfile Pipfile.lock $APP_HOME/
+RUN --mount=type=cache,target=/root/.cache/pip pipenv sync --categories "packages dev-packages docs"
 
-COPY . /app
+COPY plugs/ $APP_HOME/plugs/
+COPY install_plugins.py plug_config.py $APP_HOME
+RUN --mount=type=cache,target=/root/.cache/pip python3 $APP_HOME/install_plugins.py
 
-RUN python3 /app/install_plugins.py
+COPY . $APP_HOME/
 
 HEALTHCHECK \
   --interval=10s \
   --timeout=5s \
   --start-period=10s \
   --retries=48 \
-  CMD ["/app/scripts/healthcheck.sh"]
-
-WORKDIR /app
+  CMD ["$APP_HOME/scripts/healthcheck.sh"]
