@@ -3,27 +3,8 @@ printf "celery" > /tmp/container-role
 
 set -euo pipefail
 
-postgres_ready() {
-python << END
-import sys
-
-import psycopg
-
-try:
-    psycopg.connect(conninfo="${DATABASE_URL}")
-except psycopg.OperationalError as e:
-    print(e)
-    sys.exit(-1)
-sys.exit(0)
-
-END
-}
-
-until postgres_ready; do
-  >&2 echo 'Waiting for PostgreSQL to become available...'
-  sleep 1
-done
->&2 echo 'PostgreSQL is available'
+./wait_for_db.sh
+./wait_for_redis.sh
 
 python manage.py migrate --noinput
 python manage.py compilemessages -v 0
