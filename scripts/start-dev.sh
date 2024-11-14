@@ -3,8 +3,8 @@ printf "api" > /tmp/container-role
 
 set -euo pipefail
 
-./wait_for_db.sh
-./wait_for_redis.sh
+./scripts/wait_for_db.sh
+./scripts/wait_for_redis.sh
 
 echo "running collectstatic..."
 python manage.py collectstatic --noinput
