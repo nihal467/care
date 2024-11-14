@@ -5,8 +5,7 @@ ARG APP_HOME=/app
 
 WORKDIR $APP_HOME
 
-ENV PATH=$APP_HOME/.venv/bin:$PATH
-ENV PIPENV_VENV_IN_PROJECT=1
+ENV PATH=/.venv/bin:$PATH
 ENV PIPENV_CACHE_DIR=/root/.cache/pip
 
 RUN apt-get update && apt-get install --no-install-recommends -y \
@@ -32,11 +31,11 @@ RUN ARCH=$(dpkg --print-architecture) && \
     rm -rf typst.tar.xz typst-${TYPST_ARCH}
 
 # use pipenv to manage virtualenv
-RUN pip install pipenv
+RUN pip install pipenv==2024.4.0
 
-RUN mkdir -p $APP_HOME/.venv
+RUN python -m venv /.venv
 COPY Pipfile Pipfile.lock $APP_HOME/
-RUN --mount=type=cache,target=/root/.cache/pip pipenv sync --categories "packages dev-packages docs"
+RUN --mount=type=cache,target=/root/.cache/pip pipenv  install --system --categories "packages dev-packages docs"
 
 COPY plugs/ $APP_HOME/plugs/
 COPY install_plugins.py plug_config.py $APP_HOME/
