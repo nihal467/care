@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-set -euo pipefail
-
 printf "api" > /tmp/container-role
+
+set -euo pipefail
 
 cd /app
 
 echo "running collectstatic..."
 python manage.py collectstatic --noinput
-python manage.py compilemessages
+python manage.py compilemessages -v 0
 
 echo "starting server..."
 if [[ "${DJANGO_DEBUG,,}" == "true" ]]; then

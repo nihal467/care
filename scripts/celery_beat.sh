@@ -1,9 +1,7 @@
 #!/bin/bash
 printf "celery-beat" > /tmp/container-role
 
-if [ -z "${DATABASE_URL}" ]; then
-    export DATABASE_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
-fi
+set -euo pipefail
 
 postgres_ready() {
 python << END
@@ -28,11 +26,15 @@ done
 >&2 echo 'PostgreSQL is available'
 
 python manage.py migrate --noinput
-python manage.py compilemessages
+python manage.py compilemessages -v 0
 python manage.py load_redis_index
 python manage.py load_event_types
 
 touch /tmp/healthy
 
 export NEW_RELIC_CONFIG_FILE=/etc/newrelic.ini
-newrelic-admin run-program celery --app=config.celery_app beat --loglevel=info
+if [[ -f "$NEW_RELIC_CONFIG_FILE" ]]; then
+    newrelic-admin run-program celery --app=config.celery_app beat --loglevel=info
+else
+    celery --app=config.celery_app beat --loglevel=info
+fi
