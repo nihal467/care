@@ -39,7 +39,7 @@ COPY Pipfile Pipfile.lock $APP_HOME/
 RUN --mount=type=cache,target=/root/.cache/pip pipenv sync --categories "packages dev-packages docs"
 
 COPY plugs/ $APP_HOME/plugs/
-COPY install_plugins.py plug_config.py $APP_HOME
+COPY install_plugins.py plug_config.py $APP_HOME/
 RUN --mount=type=cache,target=/root/.cache/pip python3 $APP_HOME/install_plugins.py
 
 COPY . $APP_HOME/
@@ -49,4 +49,4 @@ HEALTHCHECK \
   --timeout=5s \
   --start-period=10s \
   --retries=48 \
-  CMD ["$APP_HOME/scripts/healthcheck.sh"]
+  CMD ["./scripts/healthcheck.sh"]

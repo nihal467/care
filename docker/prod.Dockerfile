@@ -74,6 +74,6 @@ HEALTHCHECK \
   --timeout=5s \
   --start-period=10s \
   --retries=12 \
-  CMD ["/app/healthcheck.sh"]
+  CMD ["./healthcheck.sh"]
 
 EXPOSE 9000
